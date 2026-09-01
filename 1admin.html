@@ -133,15 +133,14 @@
   .tabela-wrap{
     background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--radius);
     overflow:auto;
-    -webkit-overflow-scrolling:touch;
   }
-  table{width:100%; min-width:1000px; border-collapse:collapse; font-size:13.5px;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
   th{
     text-align:left; padding:13px 16px; color:var(--muted); font-weight:600; font-size:11.5px;
     text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--border-soft);
     white-space:nowrap; position:sticky; top:0; background:var(--surface);
   }
-  td{padding:13px 16px; border-bottom:1px solid var(--border-soft); vertical-align:middle; white-space:nowrap;}
+  td{padding:13px 16px; border-bottom:1px solid var(--border-soft); vertical-align:middle;}
   tr:last-child td{border-bottom:none;}
   tr:hover td{background:rgba(243,239,230,.02);}
   .pill{
@@ -161,7 +160,6 @@
   .btn-linha:hover{border-color:var(--gold);}
   .btn-linha:disabled{opacity:.4; cursor:default;}
   .vazio{padding:50px; text-align:center; color:var(--muted); font-size:14px;}
-  .dica-scroll{display:none; font-size:11.5px; color:var(--muted); text-align:center; margin:0 0 8px;}
 
   .toast{
     position:fixed; bottom:24px; right:24px; background:var(--surface-2); border:1px solid var(--gold);
@@ -174,25 +172,6 @@
     .painel-ocupacao{grid-template-columns:1fr;}
     main{padding:20px 16px 60px;}
     header{padding:16px;}
-  }
-
-  @media (max-width:600px){
-    .dica-scroll{display:block;}
-    .grid-kpi{grid-template-columns:1fr 1fr; gap:10px;}
-    .kpi{padding:14px 16px;}
-    .kpi .val{font-size:24px;}
-    header .marca h1{font-size:16px;}
-    .toolbar{flex-direction:column; align-items:stretch;}
-    .toolbar-esq{flex-direction:column;}
-    #busca,#filtro-status{min-width:0; width:100%;}
-    .btn-dourado{width:100%;}
-    table{min-width:880px; font-size:12.5px;}
-    th{padding:10px 12px; font-size:10.5px;}
-    td{padding:10px 12px;}
-    .pill{font-size:10.5px; padding:3px 8px;}
-    .btn-linha{font-size:11px; padding:5px 9px;}
-    .painel-fontes{padding:16px 18px;}
-    .fonte-linha .fonte-nome{width:105px; font-size:12px;}
   }
 </style>
 </head>
@@ -270,7 +249,6 @@
       <button class="btn-dourado" id="btn-enviar-pendentes">✉ Enviar agradecimentos pendentes</button>
     </div>
 
-    <p class="dica-scroll">← Desliza para o lado para ver todas as colunas →</p>
     <div class="tabela-wrap">
       <table>
         <thead>
