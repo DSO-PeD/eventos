@@ -493,7 +493,7 @@ document.getElementById('form-confirmacao').addEventListener('submit', async (e)
     p_email: email,
     p_telefone: telefone || null,
     p_empresa: empresa || null,
-    p_num_acompanhantes: 0,
+    p_num_acompanhantes: acompanhantes,
     p_cargo_profissional: cargo || null,
     p_fonte_conhecimento: fonte || null
   });
@@ -507,8 +507,7 @@ document.getElementById('form-confirmacao').addEventListener('submit', async (e)
   }
 
   if (!data.sucesso) {
-    if (data.motivo === 'email_ja_c
-onfirmado') {
+    if (data.motivo === 'email_ja_confirmado') {
       mostrarErro('Este email já tem uma confirmação registada para este evento.');
     } else if (data.motivo === 'lotado') {
       mostrarTicket(nome, acompanhantes, true);
