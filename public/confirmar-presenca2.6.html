@@ -194,24 +194,6 @@
   .campo-linha{display:flex;gap:14px;}
   .campo-linha .campo{flex:1;}
 
-  .stepper{
-    display:flex;
-    align-items:center;
-    gap:14px;
-  }
-  .stepper button{
-    width:38px;height:38px;
-    border-radius:9px;
-    border:1px solid var(--border-soft);
-    background:var(--surface-2);
-    color:var(--gold-light);
-    font-size:18px;
-    cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .stepper button:hover{border-color:var(--gold);}
-  .stepper span{font-family:'Fraunces',serif;font-size:19px;min-width:24px;text-align:center;}
-
   button[type="submit"]{
     width:100%;
     margin-top:6px;
@@ -283,7 +265,7 @@
   .bilhete-rodape{
     padding:18px 30px 24px;
     display:flex;
-    justify-content:space-between;
+    justify-content:center;
     font-size:12px;
     color:var(--muted);
     text-transform:uppercase;
@@ -376,15 +358,6 @@
       </select>
     </div>
 
-    <div class="campo">
-      <label>Acompanhantes</label>
-      <div class="stepper">
-        <button type="button" id="menos">−</button>
-        <span id="qtd-acompanhantes">0</span>
-        <button type="button" id="mais">+</button>
-      </div>
-    </div>
-
     <button type="submit" id="btn-submeter">Confirmar presença</button>
   </form>
 
@@ -399,7 +372,6 @@
     <div class="bilhete-corte"></div>
     <div class="bilhete-rodape">
       <div>Convidado<b id="bilhete-nome">—</b></div>
-      <div>Acompanhantes<b id="bilhete-acomp">0</b></div>
     </div>
   </div>
 
@@ -418,16 +390,6 @@ const CONFIG = {
 // ============================================================
 
 const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-
-let acompanhantes = 0;
-const qtdEl = document.getElementById('qtd-acompanhantes');
-
-document.getElementById('mais').addEventListener('click', () => {
-  if (acompanhantes < 10) { acompanhantes++; qtdEl.textContent = acompanhantes; }
-});
-document.getElementById('menos').addEventListener('click', () => {
-  if (acompanhantes > 0) { acompanhantes--; qtdEl.textContent = acompanhantes; }
-});
 
 function formatarData(iso) {
   const d = new Date(iso);
@@ -493,7 +455,6 @@ document.getElementById('form-confirmacao').addEventListener('submit', async (e)
     p_email: email,
     p_telefone: telefone || null,
     p_empresa: empresa || null,
-    p_num_acompanhantes: acompanhantes,
     p_cargo_profissional: cargo || null,
     p_fonte_conhecimento: fonte || null
   });
@@ -510,23 +471,22 @@ document.getElementById('form-confirmacao').addEventListener('submit', async (e)
     if (data.motivo === 'email_ja_confirmado') {
       mostrarErro('Este email já tem uma confirmação registada para este evento.');
     } else if (data.motivo === 'lotado') {
-      mostrarTicket(nome, acompanhantes, true);
+      mostrarTicket(nome, true);
     } else {
       mostrarErro('Não foi possível submeter a tua confirmação. Tenta novamente.');
     }
     return;
   }
 
-  mostrarTicket(nome, acompanhantes, false);
+  mostrarTicket(nome, false);
   carregarDisponibilidade();
 });
 
-function mostrarTicket(nome, acomp, listaEspera) {
+function mostrarTicket(nome, listaEspera) {
   document.getElementById('form-confirmacao').style.display = 'none';
   document.getElementById('capacidade-box').style.display = 'none';
   document.getElementById('bilhete').style.display = 'block';
   document.getElementById('bilhete-nome').textContent = nome;
-  document.getElementById('bilhete-acomp').textContent = acomp;
   if (listaEspera) {
     document.getElementById('bilhete-titulo').textContent = 'Adicionado à lista de espera';
     document.getElementById('bilhete-texto').textContent = 'A lotação está esgotada. Entraremos em contacto se surgir uma vaga.';
