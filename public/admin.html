@@ -510,8 +510,8 @@ async function enviarEmail(id, btnEl) {
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'A enviar…'; }
 
   try {
-    // ⚠️ SUBSTITUA pela URL do seu Worker no Cloudflare
-    const WORKER_URL = 'https://eventos-8zo.pages.dev/';
+    // URL do Worker (substitua pelo seu)
+    const WORKER_URL = 'https://enviar-email.marcos-donzolo.workers.dev';
     
     const response = await fetch(WORKER_URL, {
       method: 'POST',
@@ -543,22 +543,6 @@ async function enviarEmail(id, btnEl) {
     if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Enviar email'; }
   }
 }
-
-document.getElementById('btn-enviar-pendentes').addEventListener('click', async () => {
-  const pendentes = confirmacoesCache.filter(c => c.status === 'confirmado' && !c.email_agradecimento_enviado);
-  if (!pendentes.length) { toast('Não há emails pendentes.'); return; }
-  const btn = document.getElementById('btn-enviar-pendentes');
-  btn.disabled = true;
-  let enviados = 0;
-  for (const registo of pendentes) {
-    await enviarEmail(registo.id, null);
-    enviados++;
-    btn.textContent = `✉ A enviar… (${enviados}/${pendentes.length})`;
-  }
-  btn.disabled = false;
-  btn.textContent = '✉ Enviar agradecimentos pendentes';
-  toast(`${enviados} email(s) enviado(s) com sucesso.`);
-});
 
 
 /* ---------- EXPORTAR EXCEL ---------- */
