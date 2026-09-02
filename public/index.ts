@@ -2,9 +2,16 @@
 // EDGE FUNCTION: enviar-email
 // Envia o email de agradecimento a quem confirma presença.
 // Chamada pelo admin.html via sb.functions.invoke('enviar-email', ...)
+//
+// Usa auth:'none' (via @supabase/server) porque esta função é
+// chamada com a chave pública do projecto, não com uma sessão de
+// utilizador. Declarar isto aqui, no código, é o que a própria
+// documentação da Supabase recomenda — evita depender só do
+// interruptor "Verify JWT" no dashboard, que tem um bug conhecido
+// de se voltar a ligar sozinho depois de cada deploy.
 // ============================================================
 
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { withSupabase } from "npm:@supabase/server";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 // Domínio remetente: tem de estar verificado no Resend.
@@ -15,6 +22,7 @@ const EMAIL_REMETENTE = Deno.env.get("EMAIL_REMETENTE") ?? "onboarding@resend.de
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 function formatarData(iso: string): string {
@@ -47,59 +55,61 @@ function construirEmailHtml(nome: string, eventoNome: string, eventoData: string
   </div>`;
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+export default {
+  fetch: withSupabase({ auth: "none" }, async (req: Request) => {
+    if (req.method === "OPTIONS") {
+      return new Response("ok", { headers: corsHeaders });
+    }
 
-  try {
-    if (!RESEND_API_KEY) {
+    try {
+      if (!RESEND_API_KEY) {
+        return new Response(
+          JSON.stringify({ sucesso: false, erro: "RESEND_API_KEY não configurada nos secrets da função." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { nome, email, evento_nome, evento_data, evento_local } = await req.json();
+
+      if (!nome || !email) {
+        return new Response(
+          JSON.stringify({ sucesso: false, erro: "nome e email são obrigatórios." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const resposta = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: `Donzimar <${EMAIL_REMETENTE}>`,
+          to: [email],
+          subject: `Presença confirmada — ${evento_nome}`,
+          html: construirEmailHtml(nome, evento_nome, evento_data, evento_local),
+        }),
+      });
+
+      const resultado = await resposta.json();
+
+      if (!resposta.ok) {
+        return new Response(
+          JSON.stringify({ sucesso: false, erro: resultado }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ sucesso: false, erro: "RESEND_API_KEY não configurada nos secrets da função." }),
+        JSON.stringify({ sucesso: true, id: resultado.id }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (err) {
+      return new Response(
+        JSON.stringify({ sucesso: false, erro: String(err) }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const { nome, email, evento_nome, evento_data, evento_local } = await req.json();
-
-    if (!nome || !email) {
-      return new Response(
-        JSON.stringify({ sucesso: false, erro: "nome e email são obrigatórios." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const resposta = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: `Donzimar <${EMAIL_REMETENTE}>`,
-        to: [email],
-        subject: `Presença confirmada — ${evento_nome}`,
-        html: construirEmailHtml(nome, evento_nome, evento_data, evento_local),
-      }),
-    });
-
-    const resultado = await resposta.json();
-
-    if (!resposta.ok) {
-      return new Response(
-        JSON.stringify({ sucesso: false, erro: resultado }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({ sucesso: true, id: resultado.id }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ sucesso: false, erro: String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-});
+  }),
+};
