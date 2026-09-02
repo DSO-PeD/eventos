@@ -509,27 +509,39 @@ async function enviarEmail(id, btnEl) {
   if (!registo) return;
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'A enviar…'; }
 
-  const { data, error } = await sb.functions.invoke('enviar-email', {
-    body: {
-      nome: registo.nome,
-      email: registo.email,
-      evento_nome: eventoInfo?.nome || '',
-      evento_data: eventoInfo?.data_evento || '',
-      evento_local: eventoInfo?.local || ''
-    }
-  });
+  try {
+    // ⚠️ SUBSTITUA pela URL do seu Worker no Cloudflare
+    const WORKER_URL = 'https://eventos-8zo.pages.dev/';
+    
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome: registo.nome,
+        email: registo.email,
+        evento_nome: eventoInfo?.nome || '',
+        evento_data: eventoInfo?.data_evento || '',
+        evento_local: eventoInfo?.local || ''
+      })
+    });
 
-  if (error || !data?.sucesso) {
+    const data = await response.json();
+
+    if (!response.ok || !data?.sucesso) {
+      throw new Error(data?.erro || 'Falha ao enviar email');
+    }
+
+    // Atualiza no Supabase que o email foi enviado
+    await sb.from('confirmacoes').update({ email_agradecimento_enviado: true }).eq('id', id);
+    registo.email_agradecimento_enviado = true;
+    
+    toast(`Email enviado para ${registo.nome}.`);
+    atualizarKPIs();
+    renderizarTabela();
+  } catch (error) {
     toast(`Falha ao enviar email para ${registo.email}.`, false);
     if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Enviar email'; }
-    return;
   }
-
-  await sb.from('confirmacoes').update({ email_agradecimento_enviado: true }).eq('id', id);
-  registo.email_agradecimento_enviado = true;
-  toast(`Email enviado para ${registo.nome}.`);
-  atualizarKPIs();
-  renderizarTabela();
 }
 
 document.getElementById('btn-enviar-pendentes').addEventListener('click', async () => {
@@ -547,6 +559,7 @@ document.getElementById('btn-enviar-pendentes').addEventListener('click', async 
   btn.textContent = '✉ Enviar agradecimentos pendentes';
   toast(`${enviados} email(s) enviado(s) com sucesso.`);
 });
+
 
 /* ---------- EXPORTAR EXCEL ---------- */
 document.getElementById('btn-exportar').addEventListener('click', () => {
