@@ -41,8 +41,6 @@
     line-height:1.5;
     isolation:isolate;
   }
-  /* Fundo desfocado do cartaz — abordagem robusta e idêntica em qualquer
-     navegador (evita as inconsistências do background-attachment:fixed) */
   body::before{
     content:'';
     position:fixed;
@@ -96,53 +94,6 @@
   }
   .evento-meta span{display:inline-block;margin:0 6px;}
 
-  /* Medidor de disponibilidade — estilo bilhete perfurado */
-  .capacidade{
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:var(--radius);
-    padding:18px 22px;
-    margin-bottom:22px;
-    position:relative;
-  }
-  .capacidade-topo{
-    display:flex;
-    justify-content:space-between;
-    align-items:baseline;
-    margin-bottom:10px;
-  }
-  .capacidade-topo .num{
-    font-family:'Fraunces',serif;
-    font-size:22px;
-    color:var(--gold-light);
-    font-weight:600;
-  }
-  .capacidade-topo .lbl{
-    font-size:12.5px;
-    color:var(--muted);
-    text-transform:uppercase;
-    letter-spacing:.08em;
-  }
-  .barra{
-    height:6px;
-    background:rgba(243,239,230,.08);
-    border-radius:99px;
-    overflow:hidden;
-  }
-  .barra-fill{
-    height:100%;
-    background:linear-gradient(90deg,var(--gold),var(--gold-light));
-    border-radius:99px;
-    transition:width .6s ease;
-    width:0%;
-  }
-  .capacidade-nota{
-    margin-top:8px;
-    font-size:12.5px;
-    color:var(--muted);
-  }
-  .capacidade-nota.esgotado{color:var(--danger);font-weight:600;}
-
   /* Formulário */
   form{
     background:var(--surface);
@@ -159,6 +110,7 @@
     margin-bottom:7px;
   }
   .campo label .opcional{font-weight:400;opacity:.7;}
+  .campo label .obrigatorio{color:var(--danger);margin-left:4px;}
   .campo input{
     width:100%;
     background:var(--surface-2);
@@ -252,17 +204,18 @@
   .bilhete-icon{
     width:56px;height:56px;
     border-radius:50%;
-    background:rgba(111,191,139,.14);
-    border:1px solid rgba(111,191,139,.4);
+    background:rgba(224,178,92,.14);
+    border:1px solid rgba(224,178,92,.4);
     display:flex;align-items:center;justify-content:center;
     margin:0 auto 18px;
   }
-  .bilhete-icon svg{width:26px;height:26px;}
+  .bilhete-icon svg{width:26px;height:26px;stroke:var(--gold-light);}
   .bilhete h2{
     font-family:'Fraunces',serif;
     font-size:24px;
     font-weight:600;
     margin:0 0 8px;
+    color:var(--gold-light);
   }
   .bilhete p{color:var(--muted);font-size:14.5px;margin:0 0 4px;}
   .bilhete-corte{
@@ -299,12 +252,24 @@
     opacity:.6;
   }
 
+  .status-pendente{
+    display:inline-block;
+    background:rgba(224,178,92,.15);
+    color:var(--gold-light);
+    padding:4px 14px;
+    border-radius:99px;
+    font-size:12px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin-top:10px;
+  }
+
   @media (max-width:820px){
     body{padding:28px 18px;}
     .eyebrow{font-size:10.5px; letter-spacing:.14em;}
     .evento-meta{font-size:13.5px; margin-bottom:18px;}
     .evento-meta span{margin:0 4px;}
-    .capacidade{padding:16px 18px; margin-bottom:18px;}
     form{padding:24px 20px;}
     .campo{margin-bottom:15px;}
   }
@@ -319,11 +284,12 @@
 <body>
 <div class="wrap">
 
-  <div class="eyebrow">Confirmação de Presença</div>
+  <div class="eyebrow">Inscrição para o Evento</div>
   <h1 id="evento-nome">A carregar…</h1>
   <div class="evento-meta" id="evento-meta"></div>
 
-  <div class="capacidade" id="capacidade-box">
+  <!-- Capacidade oculta do público (visível apenas para debug, se necessário) -->
+  <div class="capacidade" id="capacidade-box" style="display:none;">
     <div class="capacidade-topo">
       <span class="num" id="cap-numero">—</span>
       <span class="lbl">vagas disponíveis</span>
@@ -336,34 +302,34 @@
     <div class="erro-msg" id="erro-msg"></div>
 
     <div class="campo">
-      <label for="nome">Nome completo</label>
-      <input type="text" id="nome" required autocomplete="name" placeholder="O teu nome">
+      <label for="nome">Nome completo <span class="obrigatorio">*</span></label>
+      <input type="text" id="nome" required autocomplete="name" placeholder="O teu nome completo">
     </div>
 
     <div class="campo-linha">
       <div class="campo">
-        <label for="email">Email</label>
+        <label for="email">Email <span class="obrigatorio">*</span></label>
         <input type="email" id="email" required autocomplete="email" placeholder="nome@exemplo.com">
       </div>
       <div class="campo">
-        <label for="telefone">Telefone <span class="opcional">(opcional)</span></label>
-        <input type="tel" id="telefone" autocomplete="tel" placeholder="+244 9xx xxx xxx">
+        <label for="telefone">Telefone <span class="obrigatorio">*</span></label>
+        <input type="tel" id="telefone" required autocomplete="tel" placeholder="+244 9xx xxx xxx">
       </div>
     </div>
 
     <div class="campo-linha">
       <div class="campo">
-        <label for="empresa">Empresa / Instituição <span class="opcional">(opcional)</span></label>
-        <input type="text" id="empresa" placeholder="Onde trabalhas">
+        <label for="empresa">Empresa / Instituição <span class="obrigatorio">*</span></label>
+        <input type="text" id="empresa" required placeholder="Onde trabalhas">
       </div>
       <div class="campo">
-        <label for="cargo">Cargo profissional <span class="opcional">(opcional)</span></label>
-        <input type="text" id="cargo" placeholder="Ex: Gestor de Projecto">
+        <label for="cargo">Cargo profissional <span class="obrigatorio">*</span></label>
+        <input type="text" id="cargo" required placeholder="Ex: Gestor de Projecto">
       </div>
     </div>
 
     <div class="campo">
-      <label for="fonte">Como soube do evento?</label>
+      <label for="fonte">Como soube do evento? <span class="obrigatorio">*</span></label>
       <select id="fonte" required>
         <option value="" disabled selected>Selecciona uma opção</option>
         <option value="Facebook">Facebook</option>
@@ -385,20 +351,24 @@
       </div>
     </div>
 
-    <button type="submit" id="btn-submeter">Confirmar presença</button>
+    <button type="submit" id="btn-submeter">Solicitar Inscrição</button>
   </form>
 
   <div class="bilhete" id="bilhete">
     <div class="bilhete-corpo">
       <div class="bilhete-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#6fbf8b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
       </div>
-      <h2 id="bilhete-titulo">Presença confirmada</h2>
-      <p id="bilhete-texto">Enviámos os detalhes para o teu email. Até lá!</p>
+      <h2 id="bilhete-titulo">Inscrição pendente de aprovação</h2>
+      <p id="bilhete-texto">Revisa o teu email para ver se o pedido foi aprovado.</p>
+      <div class="status-pendente">⏳ Pendente</div>
     </div>
     <div class="bilhete-corte"></div>
     <div class="bilhete-rodape">
-      <div>Convidado<b id="bilhete-nome">—</b></div>
+      <div>Inscrito<b id="bilhete-nome">—</b></div>
       <div>Acompanhantes<b id="bilhete-acomp">0</b></div>
     </div>
   </div>
@@ -436,10 +406,11 @@ function formatarData(iso) {
 }
 
 async function carregarDisponibilidade() {
+  // Esta função ainda existe para carregar os dados do evento
+  // mas a capacidade não é mais exibida ao público
   const { data, error } = await sb.rpc('obter_disponibilidade', { p_evento_id: CONFIG.EVENTO_ID });
   if (error || !data || !data.length) {
     document.getElementById('evento-nome').textContent = 'Evento não encontrado';
-    document.getElementById('capacidade-box').style.display = 'none';
     return null;
   }
   const info = data[0];
@@ -447,20 +418,8 @@ async function carregarDisponibilidade() {
   document.getElementById('evento-meta').innerHTML =
     `<span>📍 ${info.evento_local}</span><span>·</span><span>🗓️ ${formatarData(info.evento_data)}</span>`;
 
-  const pct = Math.min(100, Math.round((info.confirmados / info.capacidade_total) * 100));
-  document.getElementById('cap-numero').textContent = info.disponivel;
-  document.getElementById('cap-barra').style.width = pct + '%';
-
-  const nota = document.getElementById('cap-nota');
-  const btn = document.getElementById('btn-submeter');
-  if (info.disponivel <= 0) {
-    nota.textContent = 'Lotação esgotada — podes inscrever-te em lista de espera.';
-    nota.classList.add('esgotado');
-  } else if (info.disponivel <= 10) {
-    nota.textContent = `Últimos lugares! ${info.confirmados} de ${info.capacidade_total} vagas ocupadas.`;
-  } else {
-    nota.textContent = `${info.confirmados} de ${info.capacidade_total} vagas ocupadas.`;
-  }
+  // A capacidade é carregada mas NÃO é exibida ao público (style="display:none")
+  // mantemos apenas para controle interno, se necessário
   return info;
 }
 
@@ -487,6 +446,14 @@ document.getElementById('form-confirmacao').addEventListener('submit', async (e)
   const cargo = document.getElementById('cargo').value.trim();
   const fonte = document.getElementById('fonte').value;
 
+  // Validação dos campos obrigatórios
+  if (!nome || !email || !telefone || !empresa || !cargo) {
+    mostrarErro('Por favor, preenche todos os campos obrigatórios (*).');
+    btn.disabled = false;
+    btn.textContent = 'Solicitar Inscrição';
+    return;
+  }
+
   const { data, error } = await sb.rpc('confirmar_presenca', {
     p_evento_id: CONFIG.EVENTO_ID,
     p_nome: nome,
@@ -499,40 +466,49 @@ document.getElementById('form-confirmacao').addEventListener('submit', async (e)
   });
 
   btn.disabled = false;
-  btn.textContent = 'Confirmar presença';
+  btn.textContent = 'Solicitar Inscrição';
 
   if (error) {
-    mostrarErro('Não foi possível submeter a tua confirmação. Tenta novamente.');
+    console.error('Erro na RPC:', error);
+    mostrarErro('Não foi possível submeter a tua inscrição. Tenta novamente.');
     return;
   }
 
   if (!data.sucesso) {
     if (data.motivo === 'email_ja_confirmado') {
-      mostrarErro('Este email já tem uma confirmação registada para este evento.');
+      mostrarErro('Este email já tem uma inscrição registada para este evento.');
     } else if (data.motivo === 'lotado') {
       mostrarTicket(nome, acompanhantes, true);
     } else {
-      mostrarErro('Não foi possível submeter a tua confirmação. Tenta novamente.');
+      mostrarErro('Não foi possível submeter a tua inscrição. Tenta novamente.');
     }
     return;
   }
 
+  // Mostra o bilhete com a mensagem de "pendente de aprovação"
   mostrarTicket(nome, acompanhantes, false);
-  carregarDisponibilidade();
+  
+  // Não recarrega a disponibilidade (já que está oculta)
+  // carregarDisponibilidade();
 });
 
 function mostrarTicket(nome, acomp, listaEspera) {
   document.getElementById('form-confirmacao').style.display = 'none';
-  document.getElementById('capacidade-box').style.display = 'none';
   document.getElementById('bilhete').style.display = 'block';
   document.getElementById('bilhete-nome').textContent = nome;
   document.getElementById('bilhete-acomp').textContent = acomp;
+  
+  // Mensagem padrão: "Inscrição pendente de aprovação"
+  document.getElementById('bilhete-titulo').textContent = 'Inscrição pendente de aprovação';
+  document.getElementById('bilhete-texto').textContent = 'Revisa o teu email para ver se o pedido foi aprovado.';
+  
   if (listaEspera) {
-    document.getElementById('bilhete-titulo').textContent = 'Adicionado à lista de espera';
+    document.getElementById('bilhete-titulo').textContent = 'Lista de espera';
     document.getElementById('bilhete-texto').textContent = 'A lotação está esgotada. Entraremos em contacto se surgir uma vaga.';
   }
 }
 
+// Carrega os dados do evento (sem exibir a capacidade)
 carregarDisponibilidade();
 </script>
 </body>
