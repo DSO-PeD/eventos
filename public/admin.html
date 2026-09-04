@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel Administrativo · Confirmações</title>
+<title>Painel Administrativo · Inscrições</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -79,7 +79,7 @@
   .kpi .val{font-family:'Fraunces',serif; font-size:30px; font-weight:600;}
   .kpi.gold .val{color:var(--gold-light);}
   .kpi.ok .val{color:var(--success);}
-  .kpi.warn .val{color:var(--warn);}
+  .kpi.pendente .val{color:var(--warn);}
 
   .painel-ocupacao{
     display:grid; grid-template-columns:220px 1fr; gap:26px; align-items:center;
@@ -149,6 +149,7 @@
     text-transform:uppercase; letter-spacing:.03em;
   }
   .pill.confirmado{background:rgba(111,191,139,.15); color:var(--success);}
+  .pill.pendente{background:rgba(224,178,92,.15); color:var(--warn);}
   .pill.lista_espera{background:rgba(224,178,92,.15); color:var(--warn);}
   .pill.cancelado{background:rgba(224,116,92,.15); color:var(--danger);}
   .email-status{font-size:12px; color:var(--muted);}
@@ -160,6 +161,13 @@
   }
   .btn-linha:hover{border-color:var(--gold);}
   .btn-linha:disabled{opacity:.4; cursor:default;}
+  .btn-enviar-aprovar{
+    border-color:var(--success) !important;
+    color:var(--success) !important;
+  }
+  .btn-enviar-aprovar:hover{
+    background:rgba(111,191,139,.1);
+  }
   .vazio{padding:50px; text-align:center; color:var(--muted); font-size:14px;}
   .dica-scroll{display:none; font-size:11.5px; color:var(--muted); text-align:center; margin:0 0 8px;}
 
@@ -202,7 +210,7 @@
 <div id="tela-login">
   <div class="login-card">
     <h1>Painel Administrativo</h1>
-    <p class="sub">Gestão de confirmações de presença</p>
+    <p class="sub">Gestão de inscrições do evento</p>
     <div class="login-erro" id="login-erro"></div>
     <form id="form-login">
       <div class="campo">
@@ -223,7 +231,7 @@
   <header>
     <div class="marca">
       <span class="eyebrow">Painel Administrativo</span>
-      <h1 id="titulo-evento">Confirmações de Presença</h1>
+      <h1 id="titulo-evento">Inscrições</h1>
     </div>
     <div class="acoes">
       <button class="btn-fantasma" id="btn-exportar">⬇ Exportar Excel</button>
@@ -235,8 +243,8 @@
     <div class="grid-kpi">
       <div class="kpi gold"><div class="lbl">Confirmados</div><div class="val" id="kpi-confirmados">—</div></div>
       <div class="kpi ok"><div class="lbl">Vagas disponíveis</div><div class="val" id="kpi-disponiveis">—</div></div>
-      <div class="kpi warn"><div class="lbl">Lista de espera</div><div class="val" id="kpi-espera">—</div></div>
-      <div class="kpi"><div class="lbl">Emails por enviar</div><div class="val" id="kpi-pendentes">—</div></div>
+      <div class="kpi pendente"><div class="lbl">Pendentes de aprovação</div><div class="val" id="kpi-pendentes">—</div></div>
+      <div class="kpi"><div class="lbl">Emails por enviar</div><div class="val" id="kpi-emails">—</div></div>
     </div>
 
     <div class="painel-ocupacao">
@@ -249,6 +257,7 @@
         <p id="ocupacao-evento-local"></p>
         <p id="ocupacao-evento-data"></p>
         <p id="ocupacao-resumo" style="margin-top:10px;color:var(--gold-light);font-weight:600;"></p>
+        <p id="ocupacao-pendentes" style="margin-top:4px;color:var(--warn);font-size:13px;"></p>
       </div>
     </div>
 
@@ -262,12 +271,13 @@
         <input type="text" id="busca" placeholder="Procurar por nome, email ou empresa…">
         <select id="filtro-status">
           <option value="">Todos os estados</option>
+          <option value="pendente">Pendente</option>
           <option value="confirmado">Confirmado</option>
           <option value="lista_espera">Lista de espera</option>
           <option value="cancelado">Cancelado</option>
         </select>
       </div>
-      <button class="btn-dourado" id="btn-enviar-pendentes">✉ Enviar agradecimentos pendentes</button>
+      <button class="btn-dourado" id="btn-enviar-pendentes">✉ Enviar emails pendentes</button>
     </div>
 
     <p class="dica-scroll">← Desliza para o lado para ver todas as colunas →</p>
@@ -276,12 +286,12 @@
         <thead>
           <tr>
             <th>Nome</th><th>Email</th><th>Telefone</th><th>Empresa</th><th>Cargo</th><th>Fonte</th>
-            <th>Acomp.</th><th>Estado</th><th>Email</th><th>Data</th><th></th>
+            <th>Acomp.</th><th>Status</th><th>Email</th><th>Data</th><th>Ações</th>
           </tr>
         </thead>
         <tbody id="corpo-tabela"></tbody>
       </table>
-      <div class="vazio" id="tabela-vazia" style="display:none;">Nenhuma confirmação encontrada.</div>
+      <div class="vazio" id="tabela-vazia" style="display:none;">Nenhuma inscrição encontrada.</div>
     </div>
   </main>
 </div>
@@ -290,7 +300,7 @@
 
 <script>
 // ============================================================
-// CONFIGURAÇÃO — mesmos valores usados em confirmar-presenca.html
+// CONFIGURAÇÃO
 // ============================================================
 const CONFIG = {
   SUPABASE_URL: 'https://ahiforoxdtyomeftbfiv.supabase.co',
@@ -364,7 +374,7 @@ async function carregarTudo() {
     .eq('evento_id', CONFIG.EVENTO_ID)
     .order('criado_em', { ascending: false });
 
-  if (error) { toast('Erro ao carregar confirmações.', false); return; }
+  if (error) { toast('Erro ao carregar inscrições.', false); return; }
   confirmacoesCache = confirmacoes || [];
   atualizarKPIs();
   atualizarGrafico();
@@ -404,27 +414,42 @@ function atualizarFontes() {
 }
 
 function atualizarKPIs() {
+  // Apenas confirmados contam para ocupação
   const confirmados = confirmacoesCache.filter(c => c.status === 'confirmado');
-  const totalPessoas = confirmados.reduce((s, c) => s + 1 + c.num_acompanhantes, 0);
-  const espera = confirmacoesCache.filter(c => c.status === 'lista_espera').length;
-  const pendentes = confirmados.filter(c => !c.email_agradecimento_enviado).length;
+  const pendentes = confirmacoesCache.filter(c => c.status === 'pendente');
+  
+  // Total de pessoas confirmadas (incluindo acompanhantes)
+  const totalPessoas = confirmados.reduce((s, c) => s + 1 + (c.num_acompanhantes || 0), 0);
+  
+  // Número de inscrições pendentes (cada inscrição é uma linha)
+  const pendentesCount = pendentes.length;
+  
+  // Emails por enviar = mesmo número de pendentes (pois cada pendente precisa de email)
+  const emailsPendentes = pendentesCount;
+  
   const capacidade = eventoInfo ? eventoInfo.capacidade_total : 0;
   const disponivel = Math.max(capacidade - totalPessoas, 0);
 
   document.getElementById('kpi-confirmados').textContent = totalPessoas;
   document.getElementById('kpi-disponiveis').textContent = disponivel;
-  document.getElementById('kpi-espera').textContent = espera;
-  document.getElementById('kpi-pendentes').textContent = pendentes;
+  document.getElementById('kpi-pendentes').textContent = pendentesCount;
+  document.getElementById('kpi-emails').textContent = emailsPendentes;
 
   const pct = capacidade ? Math.min(100, Math.round((totalPessoas / capacidade) * 100)) : 0;
   document.getElementById('chart-pct').textContent = pct + '%';
-  document.getElementById('ocupacao-resumo').textContent =
-    `${totalPessoas} de ${capacidade} lugares ocupados`;
+  
+  document.getElementById('ocupacao-resumo').textContent = `${totalPessoas} de ${capacidade} lugares ocupados`;
+  
+  if (pendentesCount > 0) {
+    document.getElementById('ocupacao-pendentes').textContent = `${pendentesCount} inscrição(ões) aguardando aprovação`;
+  } else {
+    document.getElementById('ocupacao-pendentes').textContent = '';
+  }
 }
 
 function atualizarGrafico() {
   const confirmados = confirmacoesCache.filter(c => c.status === 'confirmado');
-  const totalPessoas = confirmados.reduce((s, c) => s + 1 + c.num_acompanhantes, 0);
+  const totalPessoas = confirmados.reduce((s, c) => s + 1 + (c.num_acompanhantes || 0), 0);
   const capacidade = eventoInfo ? eventoInfo.capacidade_total : 1;
   const disponivel = Math.max(capacidade - totalPessoas, 0);
 
@@ -470,6 +495,17 @@ function renderizarTabela() {
   for (const c of linhas) {
     const tr = document.createElement('tr');
     const data = new Date(c.criado_em).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' });
+    
+    // Determina os botões de ação
+    let botoesAcao = '';
+    if (c.status === 'pendente') {
+      botoesAcao = `<button class="btn-linha btn-enviar-aprovar" data-id="${c.id}" style="border-color:var(--success);color:var(--success);">✉ Enviar & Aprovar</button>`;
+    } else if (c.status === 'confirmado' && !c.email_agradecimento_enviado) {
+      botoesAcao = `<button class="btn-linha btn-enviar-aprovar" data-id="${c.id}" style="border-color:var(--success);color:var(--success);">✉ Enviar & Aprovar</button>`;
+    } else if (c.email_agradecimento_enviado) {
+      botoesAcao = `<span style="color:var(--success);font-size:12px;">✓ Enviado</span>`;
+    }
+
     tr.innerHTML = `
       <td>${escapeHtml(c.nome)}</td>
       <td>${escapeHtml(c.email)}</td>
@@ -477,40 +513,52 @@ function renderizarTabela() {
       <td>${escapeHtml(c.empresa || '—')}</td>
       <td>${escapeHtml(c.cargo_profissional || '—')}</td>
       <td>${escapeHtml(c.fonte_conhecimento || '—')}</td>
-      <td>${c.num_acompanhantes}</td>
+      <td>${c.num_acompanhantes || 0}</td>
       <td><span class="pill ${c.status}">${rotuloStatus(c.status)}</span></td>
       <td><span class="email-status ${c.email_agradecimento_enviado ? 'enviado' : ''}">${c.email_agradecimento_enviado ? '✓ Enviado' : 'Por enviar'}</span></td>
       <td>${data}</td>
-      <td><button class="btn-linha" data-id="${c.id}" ${c.email_agradecimento_enviado ? 'disabled' : ''}>
-        ${c.email_agradecimento_enviado ? 'Enviado' : 'Enviar email'}
-      </button></td>
+      <td>${botoesAcao}</td>
     `;
     corpo.appendChild(tr);
   }
 
-  corpo.querySelectorAll('.btn-linha:not(:disabled)').forEach(btn => {
-    btn.addEventListener('click', () => enviarEmail(btn.dataset.id, btn));
+  // Event listener para botões "Enviar & Aprovar"
+  corpo.querySelectorAll('.btn-enviar-aprovar').forEach(btn => {
+    btn.addEventListener('click', () => enviarEAprovar(btn.dataset.id, btn));
   });
 }
 
 function rotuloStatus(s) {
-  return { confirmado: 'Confirmado', lista_espera: 'Lista de espera', cancelado: 'Cancelado' }[s] || s;
+  const map = { 
+    confirmado: 'Confirmado', 
+    pendente: 'Pendente', 
+    lista_espera: 'Lista de espera', 
+    cancelado: 'Cancelado' 
+  };
+  return map[s] || s;
 }
+
 function escapeHtml(str) {
-  const d = document.createElement('div'); d.textContent = str ?? ''; return d.innerHTML;
+  const d = document.createElement('div'); 
+  d.textContent = str ?? ''; 
+  return d.innerHTML;
 }
 
 document.getElementById('busca').addEventListener('input', renderizarTabela);
 document.getElementById('filtro-status').addEventListener('change', renderizarTabela);
 
-/* ---------- ENVIO DE EMAIL DE AGRADECIMENTO ---------- */
-async function enviarEmail(id, btnEl) {
+/* ---------- ENVIAR EMAIL E APROVAR ---------- */
+async function enviarEAprovar(id, btnEl) {
   const registo = confirmacoesCache.find(c => c.id === id);
   if (!registo) return;
-  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'A enviar…'; }
+  
+  if (btnEl) { 
+    btnEl.disabled = true; 
+    btnEl.textContent = '⏳ Processando…'; 
+  }
 
   try {
-    // URL do Worker (substitua pelo seu)
+    // 1. Envia o email
     const WORKER_URL = 'https://enviar-email.marcos-donzolo.workers.dev';
     
     const response = await fetch(WORKER_URL, {
@@ -531,33 +579,77 @@ async function enviarEmail(id, btnEl) {
       throw new Error(data?.erro || 'Falha ao enviar email');
     }
 
-    // Atualiza no Supabase que o email foi enviado
-    await sb.from('confirmacoes').update({ email_agradecimento_enviado: true }).eq('id', id);
+    // 2. Atualiza o status para 'confirmado' e marca email como enviado
+    await sb
+      .from('confirmacoes')
+      .update({ 
+        status: 'confirmado',
+        email_agradecimento_enviado: true 
+      })
+      .eq('id', id);
+
+    // 3. Atualiza o cache
+    registo.status = 'confirmado';
     registo.email_agradecimento_enviado = true;
     
-    toast(`Email enviado para ${registo.nome}.`);
+    toast(`✅ ${registo.nome} aprovado e email enviado com sucesso!`);
     atualizarKPIs();
+    atualizarGrafico();
     renderizarTabela();
   } catch (error) {
-    toast(`Falha ao enviar email para ${registo.email}.`, false);
-    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Enviar email'; }
+    toast(`❌ Falha ao processar: ${error.message}`, false);
+    if (btnEl) { 
+      btnEl.disabled = false; 
+      btnEl.textContent = '✉ Enviar & Aprovar'; 
+    }
   }
 }
 
+/* ---------- ENVIAR EMAILS PENDENTES EM MASSA ---------- */
+document.getElementById('btn-enviar-pendentes').addEventListener('click', async () => {
+  const pendentes = confirmacoesCache.filter(c => 
+    c.status === 'pendente'
+  );
+  
+  if (!pendentes.length) { 
+    toast('Não há inscrições pendentes para aprovar.'); 
+    return; 
+  }
+  
+  const btn = document.getElementById('btn-enviar-pendentes');
+  btn.disabled = true;
+  let processados = 0;
+  
+  for (const registo of pendentes) {
+    const btnLinha = document.querySelector(`.btn-enviar-aprovar[data-id="${registo.id}"]`);
+    await enviarEAprovar(registo.id, btnLinha);
+    processados++;
+    btn.textContent = `✉ Processando… (${processados}/${pendentes.length})`;
+  }
+  
+  btn.disabled = false;
+  btn.textContent = '✉ Enviar emails pendentes';
+  toast(`${processados} inscrição(ões) aprovada(s) com sucesso.`);
+});
 
 /* ---------- EXPORTAR EXCEL ---------- */
 document.getElementById('btn-exportar').addEventListener('click', () => {
   const linhas = confirmacoesCache.map(c => ({
-    Nome: c.nome, Email: c.email, Telefone: c.telefone || '', Empresa: c.empresa || '',
-    'Cargo Profissional': c.cargo_profissional || '', 'Como Soube do Evento': c.fonte_conhecimento || '',
-    Acompanhantes: c.num_acompanhantes, Estado: rotuloStatus(c.status),
+    Nome: c.nome, 
+    Email: c.email, 
+    Telefone: c.telefone || '', 
+    Empresa: c.empresa || '',
+    'Cargo Profissional': c.cargo_profissional || '', 
+    'Como Soube do Evento': c.fonte_conhecimento || '',
+    Acompanhantes: c.num_acompanhantes || 0, 
+    Estado: rotuloStatus(c.status),
     'Email Enviado': c.email_agradecimento_enviado ? 'Sim' : 'Não',
-    'Data de Confirmação': new Date(c.criado_em).toLocaleString('pt-PT')
+    'Data de Inscrição': new Date(c.criado_em).toLocaleString('pt-PT')
   }));
   const ws = XLSX.utils.json_to_sheet(linhas);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Confirmações');
-  XLSX.writeFile(wb, `confirmacoes-${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, 'Inscrições');
+  XLSX.writeFile(wb, `inscricoes-${new Date().toISOString().slice(0,10)}.xlsx`);
 });
 
 verificarSessao();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Confirmação de Presença</title>
+<title>Inscrição para o Evento</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -85,6 +85,15 @@
     letter-spacing:-.01em;
     text-shadow:0 2px 14px rgba(0,0,0,.55);
   }
+  .evento-descricao{
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+    margin-bottom:6px;
+    max-width:500px;
+    margin-left:auto;
+    margin-right:auto;
+  }
   .evento-meta{
     text-align:center;
     color:var(--muted);
@@ -94,7 +103,6 @@
   }
   .evento-meta span{display:inline-block;margin:0 6px;}
 
-  /* Formulário */
   form{
     background:var(--surface);
     border:1px solid var(--border-soft);
@@ -192,7 +200,6 @@
     display:none;
   }
 
-  /* Ecrã de confirmação — bilhete */
   .bilhete{
     display:none;
     background:var(--surface);
@@ -265,6 +272,10 @@
     margin-top:10px;
   }
 
+  .capacidade-oculta{
+    display:none !important;
+  }
+
   @media (max-width:820px){
     body{padding:28px 18px;}
     .eyebrow{font-size:10.5px; letter-spacing:.14em;}
@@ -272,6 +283,7 @@
     .evento-meta span{margin:0 4px;}
     form{padding:24px 20px;}
     .campo{margin-bottom:15px;}
+    .evento-descricao{font-size:13px;}
   }
 
   @media (max-width:460px){
@@ -286,10 +298,11 @@
 
   <div class="eyebrow">Inscrição para o Evento</div>
   <h1 id="evento-nome">A carregar…</h1>
+  <div class="evento-descricao" id="evento-descricao"></div>
   <div class="evento-meta" id="evento-meta"></div>
 
-  <!-- Capacidade oculta do público (visível apenas para debug, se necessário) -->
-  <div class="capacidade" id="capacidade-box" style="display:none;">
+  <!-- Capacidade oculta do público -->
+  <div class="capacidade capacidade-oculta" id="capacidade-box">
     <div class="capacidade-topo">
       <span class="num" id="cap-numero">—</span>
       <span class="lbl">vagas disponíveis</span>
@@ -349,6 +362,9 @@
         <span id="qtd-acompanhantes">0</span>
         <button type="button" id="mais">+</button>
       </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;opacity:0.7;">
+        Número de pessoas que virão contigo (opcional)
+      </div>
     </div>
 
     <button type="submit" id="btn-submeter">Solicitar Inscrição</button>
@@ -378,7 +394,7 @@
 
 <script>
 // ============================================================
-// CONFIGURAÇÃO — preenche com os dados do teu projecto Supabase
+// CONFIGURAÇÃO
 // ============================================================
 const CONFIG = {
   SUPABASE_URL: 'https://ahiforoxdtyomeftbfiv.supabase.co',
@@ -400,27 +416,78 @@ document.getElementById('menos').addEventListener('click', () => {
 });
 
 function formatarData(iso) {
+  if (!iso) return 'Data não definida';
   const d = new Date(iso);
   return d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' }) +
     ' · ' + d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
 }
 
-async function carregarDisponibilidade() {
-  // Esta função ainda existe para carregar os dados do evento
-  // mas a capacidade não é mais exibida ao público
-  const { data, error } = await sb.rpc('obter_disponibilidade', { p_evento_id: CONFIG.EVENTO_ID });
-  if (error || !data || !data.length) {
-    document.getElementById('evento-nome').textContent = 'Evento não encontrado';
+async function carregarEvento() {
+  try {
+    // Busca os dados do evento diretamente da tabela
+    const { data: evento, error } = await sb
+      .from('evento')
+      .select('*')
+      .eq('id', CONFIG.EVENTO_ID)
+      .single();
+
+    if (error) {
+      console.error('Erro ao buscar evento:', error);
+      document.getElementById('evento-nome').textContent = 'Evento não encontrado';
+      return null;
+    }
+
+    if (!evento) {
+      document.getElementById('evento-nome').textContent = 'Evento não encontrado';
+      return null;
+    }
+
+    // Preenche os dados do evento
+    document.getElementById('evento-nome').textContent = evento.nome || 'Evento sem nome';
+    
+    if (evento.descricao) {
+      document.getElementById('evento-descricao').textContent = evento.descricao;
+    }
+    
+    const local = evento.local || 'Local não definido';
+    const dataEvento = evento.data || evento.data_evento || null;
+    const dataFormatada = dataEvento ? formatarData(dataEvento) : 'Data não definida';
+    
+    document.getElementById('evento-meta').innerHTML =
+      `<span>📍 ${local}</span><span>·</span><span>🗓️ ${dataFormatada}</span>`;
+
+    // Busca a disponibilidade (opcional, mantido para compatibilidade)
+    try {
+      const { data: disponibilidade, error: dispError } = await sb
+        .rpc('obter_disponibilidade', { p_evento_id: CONFIG.EVENTO_ID });
+      
+      if (!dispError && disponibilidade && disponibilidade.length > 0) {
+        const info = disponibilidade[0];
+        const pct = Math.min(100, Math.round((info.confirmados / info.capacidade_total) * 100));
+        document.getElementById('cap-numero').textContent = info.disponivel;
+        document.getElementById('cap-barra').style.width = pct + '%';
+        
+        const nota = document.getElementById('cap-nota');
+        if (info.disponivel <= 0) {
+          nota.textContent = 'Lotação esgotada — podes inscrever-te em lista de espera.';
+          nota.classList.add('esgotado');
+        } else if (info.disponivel <= 10) {
+          nota.textContent = `Últimos lugares! ${info.confirmados} de ${info.capacidade_total} vagas ocupadas.`;
+        } else {
+          nota.textContent = `${info.confirmados} de ${info.capacidade_total} vagas ocupadas.`;
+        }
+      }
+    } catch (e) {
+      // Se a função RPC não existir, apenas ignora
+      console.log('Função obter_disponibilidade não disponível');
+    }
+
+    return evento;
+  } catch (error) {
+    console.error('Erro ao carregar evento:', error);
+    document.getElementById('evento-nome').textContent = 'Erro ao carregar evento';
     return null;
   }
-  const info = data[0];
-  document.getElementById('evento-nome').textContent = info.evento_nome;
-  document.getElementById('evento-meta').innerHTML =
-    `<span>📍 ${info.evento_local}</span><span>·</span><span>🗓️ ${formatarData(info.evento_data)}</span>`;
-
-  // A capacidade é carregada mas NÃO é exibida ao público (style="display:none")
-  // mantemos apenas para controle interno, se necessário
-  return info;
 }
 
 function mostrarErro(msg) {
@@ -428,6 +495,7 @@ function mostrarErro(msg) {
   el.textContent = msg;
   el.style.display = 'block';
 }
+
 function limparErro() {
   document.getElementById('erro-msg').style.display = 'none';
 }
@@ -475,7 +543,7 @@ document.getElementById('form-confirmacao').addEventListener('submit', async (e)
   }
 
   if (!data.sucesso) {
-    if (data.motivo === 'email_ja_confirmado') {
+    if (data.motivo === 'email_ja_confirmado' || data.motivo === 'email_ja_pendente') {
       mostrarErro('Este email já tem uma inscrição registada para este evento.');
     } else if (data.motivo === 'lotado') {
       mostrarTicket(nome, acompanhantes, true);
@@ -487,9 +555,6 @@ document.getElementById('form-confirmacao').addEventListener('submit', async (e)
 
   // Mostra o bilhete com a mensagem de "pendente de aprovação"
   mostrarTicket(nome, acompanhantes, false);
-  
-  // Não recarrega a disponibilidade (já que está oculta)
-  // carregarDisponibilidade();
 });
 
 function mostrarTicket(nome, acomp, listaEspera) {
@@ -498,18 +563,17 @@ function mostrarTicket(nome, acomp, listaEspera) {
   document.getElementById('bilhete-nome').textContent = nome;
   document.getElementById('bilhete-acomp').textContent = acomp;
   
-  // Mensagem padrão: "Inscrição pendente de aprovação"
-  document.getElementById('bilhete-titulo').textContent = 'Inscrição pendente de aprovação';
-  document.getElementById('bilhete-texto').textContent = 'Revisa o teu email para ver se o pedido foi aprovado.';
-  
   if (listaEspera) {
     document.getElementById('bilhete-titulo').textContent = 'Lista de espera';
     document.getElementById('bilhete-texto').textContent = 'A lotação está esgotada. Entraremos em contacto se surgir uma vaga.';
+  } else {
+    document.getElementById('bilhete-titulo').textContent = 'Inscrição pendente de aprovação';
+    document.getElementById('bilhete-texto').textContent = 'Revisa o teu email para ver se o pedido foi aprovado.';
   }
 }
 
-// Carrega os dados do evento (sem exibir a capacidade)
-carregarDisponibilidade();
+// Inicializa a página carregando o evento
+carregarEvento();
 </script>
 </body>
 </html>
